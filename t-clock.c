@@ -36,6 +36,21 @@ const int DISPLAY_HIGHT_L = 9;
 uint16_t PATTERNS[][9] = {ZERO, ONE,   TWO,   THREE, FOUR,  FIVE,
                           SIX,  SEVEN, EIGHT, NINE,  COLUMN};
 
+#define LINE0 "       ⬤ ⬤ ⬤ ⬤ ⬤ ⬤ ⬤     \0"
+#define LINE1 "     ⬤               ⬤            \0"
+#define LINE2 "   ⬤                   ⬤          \0"
+#define LINE3 "  ⬤                     ⬤         \0"
+#define LINE4 " ⬤                       ⬤        \0"
+#define LINE5 " ⬤                       ⬤        \0"
+#define LINE6 " ⬤                       ⬤        \0"
+#define LINE7 "  ⬤                     ⬤         \0"
+#define LINE8 "   ⬤                   ⬤          \0"
+#define LINE9 "     ⬤               ⬤            \0"
+#define LINEA "       ⬤ ⬤ ⬤ ⬤ ⬤ ⬤ ⬤     \0"
+
+char CIRCLE[11][40] = {LINE0, LINE1, LINE2, LINE3, LINE4, LINE5,
+                       LINE6, LINE7, LINE8, LINE9, LINEA};
+
 time_t epoch_time;
 struct tm struct_time;
 
@@ -45,28 +60,33 @@ void handle_int() {
 
 void render(uint16_t* indices, int n_targets) {
     uint16_t mask = 0;
-    for(int i = 0; i < DISPLAY_HIGHT_L; ++i) {
-        for(int k = 0; k < n_targets; ++k) {
-            uint16_t* k_target = PATTERNS[indices[k]];
-            mask = 1 << (16 - 1);
-            for(int j = 0; j < DISPLAY_WIDTH_L; ++j) {
-                if(mask & k_target[i]) {
-                    printf(GRN_F "█" RESET);
-                    fflush(stdout);
-                } else {
-                    printf(" ");
-                    fflush(stdout);
+    for(int i = -1; i < DISPLAY_HIGHT_L + 1; ++i) {
+        if(i == -1 || i == DISPLAY_HIGHT_L) {
+            printf("%*c", n_targets * DISPLAY_WIDTH_L, ' ');
+        } else {
+            for(int k = 0; k < n_targets; ++k) {
+                uint16_t* k_target = PATTERNS[indices[k]];
+                mask = 1 << (16 - 1);
+                for(int j = 0; j < DISPLAY_WIDTH_L; ++j) {
+                    if(mask & k_target[i]) {
+                        printf(GRN_F "█" RESET);
+                        fflush(stdout);
+                    } else {
+                        printf(" ");
+                        fflush(stdout);
+                    }
+                    mask = mask >> 1;
                 }
-                mask = mask >> 1;
+                mask = 1 << (16 - 1);
             }
-            mask = 1 << (16 - 1);
         }
+        printf("  %s", CIRCLE[i + 1]);
         printf("\n");
     }
 }
 
 int main() {
-    printf("\x1b[?25l\n");
+    printf("\x1b[?25l");
 
     signal(SIGINT, handle_int);
 
@@ -90,13 +110,13 @@ int main() {
                struct_time.tm_min, struct_time.tm_sec);
         fflush(stdout);
 #endif
-        printf("\r\x1b[%dA", DISPLAY_HIGHT_L);
+        printf("\r\x1b[%dA", DISPLAY_HIGHT_L + 2);
 
-        struct timespec req = {0, 9000000};
+        struct timespec req = {0, 8000000};
         nanosleep(&req, NULL);
     }
 
-    printf("\r\x1b[%dB", DISPLAY_HIGHT_L);
+    printf("\r\x1b[%dB", DISPLAY_HIGHT_L + 2);
     printf("\x1b[?25h\n");
     fflush(stdout);
 
