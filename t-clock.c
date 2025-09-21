@@ -3,7 +3,12 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
+
+#ifdef __linux__
+#include <unistd.h>
+#endif
 
 #define RED_F "\x1B[31m"
 #define GRN_F "\x1B[32m"
@@ -19,6 +24,7 @@ const int DISPLAY_WIDTH_L = 11;
 const int DISPLAY_HIGHT_L = 9;
 
 bool allSecSegments = false;
+char pixel_shape[5] = "█\0";
 
 #define ZERO \
     {0x1F00, 0x2080, 0x2080, 0x2080, 0x2080, 0x2080, 0x2080, 0x2080, 0x1F00}
@@ -38,25 +44,43 @@ bool allSecSegments = false;
 
 uint16_t PATTERNS[][9] = {ZERO, ONE,   TWO,   THREE, FOUR,  FIVE,
                           SIX,  SEVEN, EIGHT, NINE,  COLUMN};
-#ifdef BIGCIRCLE
-#define DIAMETER 39
-#define LINE0 "      ● ● ● ● ● ● ●     \0"
-#define LINE1 "    ●               ●            \0"
-#define LINE2 "  ●                   ●          \0"
-#define LINE3 " ●                     ●         \0"
-#define LINE4 "●                       ●        \0"
-#define LINE5 "●                       ●        \0"
-#define LINE6 "●                       ●        \0"
-#define LINE7 " ●                     ●         \0"
-#define LINE8 "  ●                   ●          \0"
-#define LINE9 "    ●               ●            \0"
-#define LINEA "      ● ● ● ● ● ● ●     \0"
 
-char CIRCLE[11][DIAMETER] = {LINE0, LINE1, LINE2, LINE3, LINE4, LINE5,
-                             LINE6, LINE7, LINE8, LINE9, LINEA};
+#ifdef BIGCIRCLE
+
+#define DIAMETER 41
+#define N_SEGMENTS 32
+#define CLOCKFACE_OFFSET 1
+#define N_CLOCKFACE_LINES 11
+
+#define LINE0 "      ● ● ● ● ● ● ●      \0"
+#define LINE1 "    ●               ●    \0"
+#define LINE2 "  ●                   ●  \0"
+#define LINE3 " ●                     ● \0"
+#define LINE4 "●                       ●\0"
+#define LINE5 "●                       ●\0"
+#define LINE6 "●                       ●\0"
+#define LINE7 " ●                     ● \0"
+#define LINE8 "  ●                   ●  \0"
+#define LINE9 "    ●               ●    \0"
+#define LINEA "      ● ● ● ● ● ● ●      \0"
+
+char CIRCLE[N_CLOCKFACE_LINES][DIAMETER] = {LINE0, LINE1, LINE2, LINE3,
+                                            LINE4, LINE5, LINE6, LINE7,
+                                            LINE8, LINE9, LINEA};
+
+int CIRCLE_COORD[N_SEGMENTS][2] = {
+    {0, 12},  {0, 14},  {0, 16}, {0, 18}, {1, 20}, {2, 22},  {3, 23},  {4, 24},
+    {5, 24},  {6, 24},  {7, 23}, {8, 22}, {9, 20}, {10, 18}, {10, 16}, {10, 14},
+    {10, 12}, {10, 10}, {10, 8}, {10, 6}, {9, 4},  {8, 2},   {7, 1},   {6, 0},
+    {5, 0},   {4, 0},   {3, 1},  {2, 2},  {1, 4},  {0, 6},   {0, 8},   {0, 10}};
+
 #else
+
 #define DIAMETER 30
 #define N_SEGMENTS 22
+#define CLOCKFACE_OFFSET 0
+#define N_CLOCKFACE_LINES 9
+
 #define LINE0 "      ● ●  ● ●      \0"
 #define LINE1 "   ●            ●   \0"
 #define LINE2 " ●                ● \0"
@@ -67,8 +91,8 @@ char CIRCLE[11][DIAMETER] = {LINE0, LINE1, LINE2, LINE3, LINE4, LINE5,
 #define LINE7 "   ●            ●   \0"
 #define LINE8 "      ● ●  ● ●      \0"
 
-char CIRCLE[9][DIAMETER] = {LINE0, LINE1, LINE2, LINE3, LINE4,
-                            LINE5, LINE6, LINE7, LINE8};
+char CIRCLE[N_CLOCKFACE_LINES][DIAMETER] = {LINE0, LINE1, LINE2, LINE3, LINE4,
+                                            LINE5, LINE6, LINE7, LINE8};
 
 int CIRCLE_COORD[N_SEGMENTS][2] = {
     {0, 11}, {0, 13}, {1, 16}, {2, 18}, {3, 19}, {4, 19}, {5, 19}, {6, 18},
@@ -97,13 +121,14 @@ bool isPointOnClockFace(int x, int y, int max_Clock_Index) {
 
 void render(uint16_t* indices, int n_targets, int circle_index) {
     uint16_t mask = 0;
-    for(int i = 0; i < DISPLAY_HIGHT_L; ++i) {
+    for(int i = -CLOCKFACE_OFFSET; i < DISPLAY_HIGHT_L + CLOCKFACE_OFFSET;
+        ++i) {
         for(int k = 0; k < n_targets; ++k) {
             uint16_t* k_target = PATTERNS[indices[k]];
             mask = 1 << (16 - 1);
             for(int j = 0; j < DISPLAY_WIDTH_L; ++j) {
-                if(mask & k_target[i]) {
-                    printf(GRN_F "█" RESET);
+                if(i >= 0 && i < DISPLAY_HIGHT_L && mask & k_target[i]) {
+                    printf(GRN_F "%s" RESET, pixel_shape);
                     fflush(stdout);
                 } else {
                     printf(" ");
@@ -116,12 +141,14 @@ void render(uint16_t* indices, int n_targets, int circle_index) {
 
         printf("  ");
         for(int j = 0; j < DIAMETER; ++j) {
-            bool to_print = circle_index == -1
-                                ? false
-                                : isPointOnClockFace(j, i, circle_index);
+            bool to_print =
+                circle_index == -1
+                    ? false
+                    : isPointOnClockFace(j, i + CLOCKFACE_OFFSET, circle_index);
             if(to_print) {
                 printf(BLU_F "●" RESET);
-            } else if(isPointOnClockFace(j, i, N_SEGMENTS - 1) &&
+            } else if(isPointOnClockFace(j, i + CLOCKFACE_OFFSET,
+                                         N_SEGMENTS - 1) &&
                       allSecSegments) {
                 printf("●");
             } else {
@@ -133,10 +160,24 @@ void render(uint16_t* indices, int n_targets, int circle_index) {
     }
 }
 
-int main() {
+int main(int argc, char** argv) {
     printf("\x1b[?25l \n");
 
+#ifdef __linux__
     signal(SIGINT, handle_int);
+#endif
+
+    for(int i = 1; i < argc; ++i) {
+        if(strcmp("-allSeg", argv[i]) == 0) {
+            allSecSegments = true;
+        } else if(strcmp("-useDots", argv[i]) == 0) {
+            strcpy((char*)&pixel_shape, "●\0");
+        } else {
+            printf("Flag not recognized. Only following flags are allowed:\n");
+            printf("-allSeg\n");
+            return 0;
+        }
+    }
 
     uint16_t target_idxs[8];
     int circle_index = -1;
@@ -163,13 +204,12 @@ int main() {
                struct_time.tm_min, struct_time.tm_sec);
         fflush(stdout);
 #endif
-        printf("\r\x1b[%dA", DISPLAY_HIGHT_L);
+        printf("\r\x1b[%dA", DISPLAY_HIGHT_L + 2 * CLOCKFACE_OFFSET);
 
-        struct timespec req = {0, 400000000};
-        nanosleep(&req, NULL);
+        sleep(1);
     }
 
-    printf("\r\x1b[%dB", DISPLAY_HIGHT_L);
+    printf("\r\x1b[%dB", DISPLAY_HIGHT_L + 2 * CLOCKFACE_OFFSET);
     printf("\x1b[?25h\n");
     fflush(stdout);
 
