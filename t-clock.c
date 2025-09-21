@@ -23,6 +23,9 @@ static volatile int running = 1;
 const int DISPLAY_WIDTH_L = 11;
 const int DISPLAY_HIGHT_L = 9;
 
+#define N_FLAGS 2
+char possible_flags[N_FLAGS][9] = {{"-allSeg\0"}, {"-useDots\0"}};
+
 bool allSecSegments = false;
 char pixel_shape[5] = "█\0";
 
@@ -52,22 +55,6 @@ uint16_t PATTERNS[][9] = {ZERO, ONE,   TWO,   THREE, FOUR,  FIVE,
 #define CLOCKFACE_OFFSET 1
 #define N_CLOCKFACE_LINES 11
 
-#define LINE0 "      ● ● ● ● ● ● ●      \0"
-#define LINE1 "    ●               ●    \0"
-#define LINE2 "  ●                   ●  \0"
-#define LINE3 " ●                     ● \0"
-#define LINE4 "●                       ●\0"
-#define LINE5 "●                       ●\0"
-#define LINE6 "●                       ●\0"
-#define LINE7 " ●                     ● \0"
-#define LINE8 "  ●                   ●  \0"
-#define LINE9 "    ●               ●    \0"
-#define LINEA "      ● ● ● ● ● ● ●      \0"
-
-char CIRCLE[N_CLOCKFACE_LINES][DIAMETER] = {LINE0, LINE1, LINE2, LINE3,
-                                            LINE4, LINE5, LINE6, LINE7,
-                                            LINE8, LINE9, LINEA};
-
 int CIRCLE_COORD[N_SEGMENTS][2] = {
     {0, 12},  {0, 14},  {0, 16}, {0, 18}, {1, 20}, {2, 22},  {3, 23},  {4, 24},
     {5, 24},  {6, 24},  {7, 23}, {8, 22}, {9, 20}, {10, 18}, {10, 16}, {10, 14},
@@ -80,19 +67,6 @@ int CIRCLE_COORD[N_SEGMENTS][2] = {
 #define N_SEGMENTS 22
 #define CLOCKFACE_OFFSET 0
 #define N_CLOCKFACE_LINES 9
-
-#define LINE0 "      ● ●  ● ●      \0"
-#define LINE1 "   ●            ●   \0"
-#define LINE2 " ●                ● \0"
-#define LINE3 "●                  ●\0"
-#define LINE4 "●                  ●\0"
-#define LINE5 "●                  ●\0"
-#define LINE6 " ●                ● \0"
-#define LINE7 "   ●            ●   \0"
-#define LINE8 "      ● ●  ● ●      \0"
-
-char CIRCLE[N_CLOCKFACE_LINES][DIAMETER] = {LINE0, LINE1, LINE2, LINE3, LINE4,
-                                            LINE5, LINE6, LINE7, LINE8};
 
 int CIRCLE_COORD[N_SEGMENTS][2] = {
     {0, 11}, {0, 13}, {1, 16}, {2, 18}, {3, 19}, {4, 19}, {5, 19}, {6, 18},
@@ -174,7 +148,10 @@ int main(int argc, char** argv) {
             strcpy((char*)&pixel_shape, "●\0");
         } else {
             printf("Flag not recognized. Only following flags are allowed:\n");
-            printf("-allSeg\n");
+            for(int j = 0; j < N_FLAGS; ++j) {
+                printf("%s\n", possible_flags[j]);
+            }
+            printf("\x1b[?25h\n");
             return 0;
         }
     }
